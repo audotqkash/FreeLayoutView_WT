@@ -31,7 +31,6 @@ class buttonLayout
         const float backlightchg = 0.08;
 
         /* MENU */
-        LGFX_Sprite menu_spr;
         MenuView menu;
         menuTree topmenu;
         menuTree editmenu;
@@ -40,20 +39,19 @@ class buttonLayout
     public:
         buttonLayout(LovyanGFX *base)
         {
-            cambus.setColorDepth(32);
-            cambus.createSprite(base->width() - (30 * 2), base->height() - (30 * 2));
-
-            menu.init(base->width() * 0.5, base->height() - 10);
-            menu_spr.setColorDepth(8);
+          cambus.setColorDepth(32);
+          cambus.createSprite(base->width() - (30 * 2), base->height() - (30 * 2));
         }
         void reset(LovyanGFX *base){
           cambus.deleteSprite();
+          cambus.deletePalette();
           cambus.createSprite(base->width() - (30 * 2), base->height() - (30 * 2));
+          cambus.fillScreen(TFT_BLACK);
         }
 
         void end()
         {
-          cambus.deleteSprite();
+          cambus.fillScreen(TFT_BLACK);
         }
         size_t add(myButton *btn){
             auto itr = btns.begin();
@@ -84,9 +82,6 @@ class buttonLayout
                 }
             }
             
-            menu.setItem("set IR signal", (void (*)()) NULL);
-            menu.setItem("cancel", &buttonLayout::cancel);
-            editmenu = menu.getMenuTree();
             menu.setMenuTree(topmenu);
             menu.setItem("save", &buttonLayout::save);
             menu.setItem("cancel",  &buttonLayout::cancel);
@@ -109,9 +104,9 @@ class buttonLayout
         {
           if(editmode == false)
           {
-            Serial.println("編集モード");
+            Serial.println("Edit mode");
           }else{
-            Serial.println("操作モード");
+            Serial.println("Normal mode");
             cambus.fillScreen(TFT_BLACK);
           }
           editmode = !editmode;
@@ -186,26 +181,26 @@ class buttonLayout
                     abs((((*vaitr)->grid_x * GRIDINTERVAL) + (*vaitr)->getWidth()) 
                      - ((cur->grid_x * GRIDINTERVAL) + (cur->getWidth() / 2))); 
 
-            if(distu > 0 && (distu + disth) < tdst){ /* 上方向 */
-              tdst = distu + disth;
+            if(distu > 0 && (distu + disth * 10) < tdst){ /* 上方向 */
+              tdst = distu + disth * 10;
               *up = *vaitr;
             }
-            if(distd > 0 && (distd + disth) < ddst){ /* 下方向 */
-              ddst = distd + disth;
+            if(distd > 0 && (distd + disth * 10) < ddst){ /* 下方向 */
+              ddst = distd + disth * 10;
               *down = *vaitr;
             }
 
-            if(distr > 0 && (distr + distv) < rdst){
+            if(distr > 0 && (distr + distv * 10) < rdst){
               *right = *vaitr;
-              rdst = distr + distv;
+              rdst = distr + distv * 10;
             }
 
-            if(distl > 0 && (distl + distv) < ldst){
+            if(distl > 0 && (distl + distv * 10) < ldst){
               *left = *vaitr;
-              ldst = distl + distv;
+              ldst = distl + distv * 10;
             }
-//    //Serial.printf("u(%d,%d) = %d,%d\n",(*vaitr)->grid_x, (*vaitr)->grid_y, distu, disth);
-//    //Serial.printf("d(%d,%d) = %d,%d\n",(*vaitr)->grid_x, (*vaitr)->grid_y, distd, disth);
+//    Serial.printf("u(%d,%d) = %d,%d\n",(*vaitr)->grid_x, (*vaitr)->grid_y, distu, disth);
+//    Serial.printf("d(%d,%d) = %d,%d\n",(*vaitr)->grid_x, (*vaitr)->grid_y, distd, disth);
 //    Serial.printf("l(%d,%d) = %d,%d\n",(*vaitr)->grid_x, (*vaitr)->grid_y, distl, disth);
 //    Serial.printf("r(%d,%d) = %d,%d\n",(*vaitr)->grid_x, (*vaitr)->grid_y, distr, disth);
           }
@@ -343,13 +338,14 @@ class buttonLayout
         {
           if(menuOpened == true)
           {
-            /***********   メニュー画面描画     *****************/
-            int ret = menu.update(&menu_spr);
+            /***********   MENU View         *****************/
+            int ret = menu.update(&cambus);
             if(ret != 0){
-              menu_spr.pushSprite(base, 0, 10);
+              Serial.println("menu update!");
+              cambus.pushSprite(base, 30, 30);
             }
           }else{
-            /***********   リモコン画面描画     *****************/
+            /***********   Layout View         *****************/
             for(auto itr = btns.begin(); itr != btns.end();  ++itr)
             {
               (*itr)->clearBacklight(GRIDINTERVAL, &cambus);
@@ -403,27 +399,26 @@ class buttonLayout
         //    menu.begin();
         //}
 //
-        void openSettingMenu(LGFX *base)
+        void openSettingMenu(LovyanGFX *base)
         {
         if(editmode == true && getFocusedButton()->movable == true &&
            menuOpened == false)
           {
-            Serial.println(" << MENU 表示 >>");
+            Serial.println(" << MENU OPEN >>");
             end();
-            menu_spr.createSprite(base->width() * 0.5, base->height() - 10);
-            menu_spr.fillScreen(TFT_BLACK);
+            menu.init(base->width() * 0.3, base->height() * 0.4);
+            menu.begin();                      /* キー割り込みが発生 */
             menuOpened = true;
-
-            // キー無効化
           }
         }
         
-        void closeSettingMenu(LGFX *base)
+        void closeSettingMenu(LovyanGFX *base)
         {
-            menu_spr.deleteSprite();
-            menu.end();
-            reset(base);
+            Serial.println(" << MENU EXIT >>");
+            menu.end();                         /* キー割り込み解除 */
             menuOpened = false;
+            reset(base);
+            draw(base);
         }
 
 };
